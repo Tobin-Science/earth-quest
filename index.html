@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earth Quest — 6th Grade Earth Science RPG ($19.99, one-time)</title>
+<link rel="icon" href="eq_icon.png">
+<style>
+  :root{--gold:#7fae4d;--gold-bright:#b4e07a;--gold-dark:#46662a;--parchment:#eef0e2;--parchment-dark:#9fae84;--stone-dark:#1d2415;--stone:#2c3320;--stone-light:#4a553a;--good:#7ec46b}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:radial-gradient(ellipse at 50% -8%,#37452a 0%,var(--stone-dark) 55%,#11160c 100%);color:var(--parchment);font-family:'Crimson Pro',Georgia,serif;font-size:17px;line-height:1.6;padding:40px 18px 70px}
+  .wrap{max-width:760px;margin:0 auto}
+  .hero{text-align:center;margin-bottom:40px}
+  h1{font-family:'Cinzel',Georgia,serif;font-weight:900;font-size:40px;letter-spacing:4px;color:var(--gold-bright);text-shadow:0 2px 0 var(--gold-dark);margin:6px 0}
+  .tag{font-size:19px;color:var(--parchment-dark);max-width:520px;margin:6px auto 0}
+  .pricetag{display:inline-block;margin-top:20px;font-family:'Cinzel',Georgia,serif;font-size:15px;letter-spacing:1px;color:var(--gold);border:1px solid var(--gold-dark);border-radius:30px;padding:8px 20px}
+  .pricetag b{color:var(--gold-bright);font-size:18px}
+  .cta{display:block;width:100%;max-width:340px;margin:22px auto 0;font-family:'Cinzel',Georgia,serif;font-size:18px;letter-spacing:1px;padding:16px;border-radius:9px;cursor:pointer;border:1px solid var(--gold-dark);background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#14200a;font-weight:700}
+  .cta:hover{filter:brightness(1.08)}
+  .cta:disabled{opacity:.7;cursor:default}
+  .reassure{font-size:14px;color:var(--parchment-dark);margin-top:10px}
+  .card{background:linear-gradient(180deg,rgba(44,51,32,0.9),rgba(29,36,21,0.9));border:1px solid var(--gold-dark);border-radius:10px;padding:24px 28px;margin-bottom:20px}
+  h2{font-family:'Cinzel',Georgia,serif;font-weight:700;font-size:20px;letter-spacing:2px;color:var(--gold-bright);margin-bottom:14px;text-align:center}
+  .inc{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:17px}
+  .inc .ck{color:var(--good);font-weight:700;flex:0 0 auto}
+  .steps{display:grid;gap:14px}
+  .step{display:flex;gap:14px;align-items:flex-start}
+  .num{flex:0 0 34px;height:34px;border-radius:50%;background:var(--stone);border:1px solid var(--gold);color:var(--gold-bright);font-family:'Cinzel',Georgia,serif;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .step b{color:var(--gold-bright);font-weight:600}
+  .note{background:rgba(0,0,0,0.3);border:1px solid var(--stone-light);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--parchment-dark);margin-top:8px}
+  .note b{color:var(--gold)}
+  .district{display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-size:15px;color:var(--parchment-dark)}
+  .district b{color:var(--good)}
+  .canceled{display:none;background:rgba(96,32,32,0.3);border:1px solid #7a4040;color:#e0b3b3;border-radius:8px;padding:10px 14px;text-align:center;margin-bottom:20px;font-size:15px}
+  footer{text-align:center;color:var(--stone-light);font-size:13px;margin-top:30px}
+  footer a{color:var(--gold)}
+  .trailer{width:100%;border-radius:9px;overflow:hidden;border:1px solid var(--gold-dark);margin-bottom:8px;background:#000;display:block}
+  .trailer video{width:100%;display:block}
+  .vidcap{text-align:center;font-size:14px;color:var(--parchment-dark);margin:0 0 16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="canceled" id="canceled">Checkout canceled — no charge was made. You can try again any time.</div>
+
+  <div class="hero">
+    <img src="eq_banner.png" alt="Earth Quest — the epic Earth Science RPG" onerror="this.style.display='none'" style="display:block;width:100%;max-width:520px;margin:0 auto 16px;border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.55)">
+    <h1>EARTH QUEST</h1>
+    <p class="tag">A 6th-grade Earth Science RPG that turns your science class into an adventure your students actually want to play.</p>
+    <div class="pricetag"><b>$19.99</b> &middot; one-time &middot; yours forever</div>
+    <button class="cta" id="buy" onclick="buy()">Buy Earth Quest &mdash; $19.99</button>
+    <div class="reassure">A one-time purchase, never a subscription. Reuse it with new students every year.</div>
+    <div class="reassure" style="margin-top:14px">Already purchased? <a href="/recover.html" style="color:var(--gold-bright)">Find your dashboard &rarr;</a></div>
+  </div>
+
+  <div class="card">
+    <h2>&#127916; Watch the Trailer</h2>
+    <div class="trailer"><video controls preload="none" poster="eq_banner.png" playsinline>
+      <source src="Earth%20Quest%20Trailer.mp4" type="video/mp4">
+      Your browser can't play this video.
+    </video></div>
+    <p class="vidcap">Earth Quest &mdash; the 6th grade Earth Science RPG</p>
+  </div>
+
+  <div class="card">
+    <h2>What you get</h2>
+    <div class="inc"><span class="ck">&#10003;</span><span>The full <b>Earth Quest</b> RPG &mdash; the complete adventure game across all six Earth Science realms.</span></div>
+    <div class="inc"><span class="ck">&#10003;</span><span><b>150 student play codes</b> &mdash; hand one to each student; reset and reuse them every year.</span></div>
+    <div class="inc"><span class="ck">&#10003;</span><span><b>Hall of Champions</b> &mdash; a class leaderboard to track and celebrate progress.</span></div>
+    <div class="inc"><span class="ck">&#10003;</span><span><b>Strategy Guide (PDF)</b> &mdash; print or share with your students.</span></div>
+  </div>
+
+  <div class="card">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><div>You buy once for <b>$19.99</b> and get your own private teacher dashboard.</div></div>
+      <div class="step"><div class="num">2</div><div>Your dashboard holds <b>150 student codes</b> &mdash; paste your roster to auto-fill them, then print.</div></div>
+      <div class="step"><div class="num">3</div><div>Each student enters their code and <b>plays the game</b> &mdash; no accounts, no logins.</div></div>
+      <div class="step"><div class="num">4</div><div>Watch everyone climb the <b>leaderboard</b>. At year's end, hit <b>Reset</b> and reuse it all &mdash; no second purchase.</div></div>
+    </div>
+    <div class="district"><span>&#127979;</span><span><b>Cherokee County teacher?</b> Earth Quest is <b style="color:var(--good)">free</b> with your school email. <a href="/district.html" style="color:var(--gold-bright)">Get free access &rarr;</a></span></div>
+  </div>
+
+  <button class="cta" id="buy2" onclick="buy()">Buy Earth Quest &mdash; $19.99</button>
+  <div class="reassure" style="text-align:center">You'll get your codes instantly after checkout.</div>
+
+  <footer>Already purchased? <a href="/recover.html">Find your dashboard link &rarr;</a><br><br>Earth Quest &middot; a TobinScience.com original &middot; a one-time classroom purchase. Secure checkout by Stripe.</footer>
+</div>
+
+<script>
+if(new URLSearchParams(location.search).get('canceled')) document.getElementById('canceled').style.display='block';
+
+async function buy(){
+  var btns = [document.getElementById('buy'), document.getElementById('buy2')];
+  btns.forEach(function(b){ if(b){ b.disabled=true; b.textContent='Loading…'; } });
+  try{
+    var r = await fetch('/api/create-checkout', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    var j = await r.json();
+    if(j.url){ location.href = j.url; return; }
+    throw new Error(j.error || 'Could not start checkout');
+  }catch(e){
+    alert('Sorry — could not start checkout: ' + e.message);
+    btns.forEach(function(b){ if(b){ b.disabled=false; b.textContent='Buy Earth Quest — $19.99'; } });
+  }
+}
+</script>
+</body>
+</html>

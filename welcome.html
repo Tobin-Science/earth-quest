@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earth Quest — Thank you!</title>
+<link rel="icon" href="eq_icon.png">
+<style>
+  :root{--gold:#7fae4d;--gold-bright:#b4e07a;--gold-dark:#46662a;--parchment:#eef0e2;--parchment-dark:#9fae84;--stone-dark:#1d2415;--stone-light:#4a553a;--good:#7ec46b}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(ellipse at 50% -10%,#37452a 0%,var(--stone-dark) 55%,#11160c 100%);
+    color:var(--parchment);font-family:'Crimson Pro',Georgia,serif;text-align:center}
+  .box{width:100%;max-width:480px;background:linear-gradient(180deg,rgba(44,51,32,0.92),rgba(29,36,21,0.92));
+    border:1px solid var(--gold-dark);border-radius:10px;padding:32px 28px;box-shadow:0 8px 30px rgba(0,0,0,0.5)}
+  .ic{font-size:44px}
+  h1{font-family:'Cinzel',Georgia,serif;font-weight:700;font-size:24px;letter-spacing:2px;color:var(--gold-bright);margin:8px 0}
+  p{color:var(--parchment-dark);font-size:16px;line-height:1.6}
+  .lbl{font-family:'Cinzel',Georgia,serif;font-size:12px;letter-spacing:2px;color:var(--gold);margin:22px 0 8px}
+  .mono{font-family:monospace;font-size:13px;background:rgba(0,0,0,0.45);border:1px solid var(--gold-dark);border-radius:6px;padding:10px 12px;color:var(--gold-bright);word-break:break-all;text-align:left}
+  button,a.btn{display:inline-block;font-family:'Cinzel',Georgia,serif;font-size:15px;letter-spacing:1px;margin-top:16px;padding:13px 22px;border-radius:7px;cursor:pointer;border:1px solid var(--gold-dark);text-decoration:none;
+    background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#14200a;font-weight:700}
+  button.ghost{background:rgba(0,0,0,0.3);color:var(--parchment-dark);font-weight:400;font-size:13px}
+  .warn{background:rgba(0,0,0,0.35);border:1px solid var(--gold-dark);border-radius:7px;padding:10px 14px;font-size:14px;color:var(--parchment);margin-top:14px}
+  .spin{display:inline-block;width:34px;height:34px;border:3px solid var(--stone-light);border-top-color:var(--gold-bright);border-radius:50%;animation:s 0.9s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="box">
+  <div id="loading">
+    <div class="spin"></div>
+    <h1>Setting up your codes…</h1>
+    <p>Your purchase went through — we're generating your 150 student codes. This takes just a moment.</p>
+  </div>
+
+  <div id="ready" class="hide">
+    <div class="ic">&#127942;</div>
+    <h1>You're all set!</h1>
+    <p>Thank you for buying Earth Quest. Here is your private teacher dashboard — where your 150 codes live.</p>
+    <div class="lbl">&#11088; Your private dashboard link &middot; bookmark it now</div>
+    <div class="mono" id="link"></div>
+    <div><button onclick="copyLink()" id="copyBtn">Copy link</button>
+    <a class="btn" id="openBtn" href="#">Open my dashboard &rarr;</a></div>
+    <div class="warn">This link is your key — save it somewhere safe. Anyone with it can manage your codes, and it's how you'll get back here later.</div>
+  </div>
+
+  <div id="slow" class="hide">
+    <div class="ic">&#9203;</div>
+    <h1>Almost there…</h1>
+    <p>Your payment succeeded, but the codes are taking a little longer than usual. Please refresh this page in a moment.</p>
+    <button onclick="location.reload()">Refresh</button>
+    <p style="margin-top:14px;font-size:14px"><a href="/recover.html" style="color:var(--gold-bright)">Or email me my link</a></p>
+  </div>
+</div>
+
+<script>
+var sid = new URLSearchParams(location.search).get('session_id') || '';
+var LINK = '';
+
+function show(id){ ['loading','ready','slow'].forEach(function(x){ document.getElementById(x).classList.toggle('hide', x!==id); }); }
+
+function showReady(token){
+  LINK = location.origin + '/dashboard.html?key=' + encodeURIComponent(token);
+  document.getElementById('link').textContent = LINK;
+  document.getElementById('openBtn').setAttribute('href', LINK);
+  show('ready');
+}
+function copyLink(){
+  var b = document.getElementById('copyBtn');
+  var done = function(){ b.textContent='Copied!'; setTimeout(function(){b.textContent='Copy link';},1400); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(LINK).then(done).catch(done);
+  else done();
+}
+
+async function poll(tries){
+  if(!sid){ show('slow'); return; }
+  try{
+    var r = await fetch('/api/welcome?session_id=' + encodeURIComponent(sid));
+    var j = await r.json();
+    if(j.ready && j.token){ showReady(j.token); return; }
+  }catch(e){}
+  if(tries<=0){ show('slow'); return; }
+  setTimeout(function(){ poll(tries-1); }, 2000);
+}
+poll(15);
+</script>
+</body>
+</html>

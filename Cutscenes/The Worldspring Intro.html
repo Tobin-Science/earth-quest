@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Worldspring — Finale Intro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&display=swap" rel="stylesheet">
+<style>
+  html,body{ margin:0; padding:0; height:100%; background:#04030f; overflow:hidden; }
+  #fit{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  /* the 1280x720 design surface, scaled to fit the viewport (letterboxed) */
+  #stage{ position:relative; width:1280px; height:720px; transform-origin:50% 50%; }
+  #scene{ position:absolute; inset:0; overflow:hidden; background:#04030f; }
+</style>
+</head>
+<body>
+<div id="fit"><div id="stage"><div id="scene"></div></div></div>
+<audio id="bgm" src="../Soundtrack/Final Cutscene Music.mp3" preload="auto"></audio>
+<script>
+/* ============================================================================
+   "THE WORLDSPRING" — Earth Quest finale intro cutscene (vanilla port).
+   Faithful rebuild of the Claude-Design scene (EarthQuest.jsx) as dependency-free
+   DOM/CSS so it runs fully OFFLINE inside the game's iframe overlay. 22s, 1280x720.
+   ============================================================================ */
+const W = 1280, H = 720, DUR = 31.5;   // matches the ~32s finale score; beats finish by ~22s, title holds over the live sanctum while the music swells to its finish
+
+// ── tiny React-style DOM helpers ────────────────────────────────────────────
+const UNITLESS = { opacity:1, zIndex:1, lineHeight:1, fontWeight:1, flex:1, order:1, fontStyle:1 };
+function sty(o){ let s=''; for(const k in o){ let v=o[k]; if(v==null||v===false) continue;
+  const kk = k.replace(/[A-Z]/g, m=>'-'+m.toLowerCase());
+  if(typeof v==='number' && !UNITLESS[k]) v = v+'px';
+  s += kk+':'+v+';'; } return s; }
+function add(parent, kids){ if(kids==null||kids===false) return;
+  if(Array.isArray(kids)){ for(const k of kids) add(parent,k); return; }
+  if(typeof kids==='string'){ parent.appendChild(document.createTextNode(kids)); return; }
+  parent.appendChild(kids); }
+function D(style, kids){ const d=document.createElement('div'); if(style) d.style.cssText=sty(style); add(d,kids); return d; }
+
+// ── math helpers ──────────────────────────────────────────────────────────
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp  = (a,b,t)=>a+(b-a)*t;
+const eInOut= t=> t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
+const eOut  = t=> 1 - Math.pow(1-t,3);
+function fade(t,inS,inE,outS,outE){
+  if(t<inS) return 0;
+  if(t<inE) return eInOut((t-inS)/(inE-inS));
+  if(t<outS) return 1;
+  if(t<outE) return 1 - eInOut((t-outS)/(outE-outS));
+  return 0;
+}
+function mulberry(seed){ return function(){ seed|=0; seed=(seed+0x6d2b79f5)|0;
+  let t=Math.imul(seed^(seed>>>15),1|seed);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t;
+  return ((t^(t>>>14))>>>0)/4294967296; }; }
+
+const KEYSTONES = [
+  { key:'cosmos',  color:'#ffd06b', core:'#fff2c8' },
+  { key:'tides',   color:'#a8d4ff', core:'#e6f2ff' },
+  { key:'water',   color:'#52e8db', core:'#c8fff8' },
+  { key:'weather', color:'#e8eeff', core:'#ffffff' },
+  { key:'geology', color:'#ff9a45', core:'#ffd9a6' },
+  { key:'energy',  color:'#76e389', core:'#d2f7d6' },
+];
+
+// ── a glowing faceted keystone gem ──────────────────────────────────────────
+function Gem({x,y,size,color,core,intensity=1,glow=1,z=1}){
+  return D({ position:'absolute', left:x-size/2, top:y-size/2, width:size, height:size, zIndex:z }, [
+    D({ position:'absolute', left:-size, top:-size, width:size*3, height:size*3, borderRadius:'50%',
+        background:`radial-gradient(circle, ${color} 0%, transparent 62%)`,
+        opacity:0.55*glow, filter:`blur(${size*0.32}px)`, mixBlendMode:'screen' }),
+    D({ position:'absolute', inset:0,
+        clipPath:'polygon(50% 0%, 100% 34%, 82% 100%, 18% 100%, 0% 34%)',
+        background:`linear-gradient(155deg, ${core} 0%, ${color} 58%, ${color} 100%)`,
+        boxShadow:`inset 0 0 ${size*0.4}px rgba(255,255,255,0.85), 0 0 ${14*glow}px ${4*glow}px ${color}`,
+        opacity:intensity }),
+    D({ position:'absolute', left:'24%', top:'16%', width:'30%', height:'34%',
+        clipPath:'polygon(50% 0%, 100% 60%, 50% 100%, 0% 60%)',
+        background:'rgba(255,255,255,0.85)', filter:'blur(0.5px)', opacity:0.7*intensity }),
+  ]);
+}
+
+// ── persistent night sky ────────────────────────────────────────────────────
+const STARS = (()=>{ const r=mulberry(7), arr=[];
+  for(let i=0;i<150;i++) arr.push({ x:r()*W, y:r()*(H*0.92), s:0.6+r()*1.9, ph:r()*6.28, sp:0.6+r()*1.8, op:0.35+r()*0.55 });
+  return arr; })();
+const SHOOTERS = [
+  { start:2.4, dur:1.1, x:980,  y:90,  ang:28, len:220 },
+  { start:7.6, dur:1.3, x:240,  y:70,  ang:18, len:260 },
+  { start:9.4, dur:1.0, x:1080, y:150, ang:33, len:200 },
+  { start:14.2,dur:1.2, x:380,  y:60,  ang:22, len:240 },
+  { start:23.5,dur:1.3, x:1020, y:80,  ang:26, len:230 },   // keep the sky alive while the title holds + music finishes
+  { start:28.0,dur:1.2, x:300,  y:110, ang:20, len:250 },
+];
+function BaseSky(t){
+  const drift = Math.sin(t*0.18)*8;
+  const kids = [];
+  kids.push(D({ position:'absolute', inset:0,
+    background:'radial-gradient(120% 90% at 50% 18%, #1a1140 0%, #0d0a28 38%, #070518 72%, #04030f 100%)' }));
+  // aurora ribbons
+  [ { c:'#5be0c8', x:-120, y:-40, w:900, h:420, rot:-12, op:0.16, sp:0.07, ph:0 },
+    { c:'#9a7bff', x:520,  y:-80, w:980, h:460, rot:10,  op:0.15, sp:0.05, ph:2 },
+    { c:'#62a8ff', x:220,  y:30,  w:820, h:380, rot:-4,  op:0.12, sp:0.09, ph:4 },
+  ].forEach(a=> kids.push(D({ position:'absolute', left:a.x+Math.sin(t*a.sp+a.ph)*60, top:a.y, width:a.w, height:a.h,
+      background:`radial-gradient(60% 70% at 50% 40%, ${a.c} 0%, transparent 68%)`,
+      opacity:a.op+Math.sin(t*a.sp*2+a.ph)*0.04, transform:`rotate(${a.rot}deg)`,
+      filter:'blur(36px)', mixBlendMode:'screen' })));
+  // stars
+  STARS.forEach(st=>{ const tw=st.op*(0.55+0.45*Math.sin(t*st.sp+st.ph));
+    kids.push(D({ position:'absolute', left:st.x, top:st.y+drift*(st.s/2), width:st.s, height:st.s,
+      borderRadius:'50%', background:'#fff', opacity:tw,
+      boxShadow: st.s>1.7 ? `0 0 ${st.s*2}px #cfe0ff` : 'none' })); });
+  // shooting stars
+  SHOOTERS.forEach(sh=>{ if(t<sh.start || t>sh.start+sh.dur) return;
+    const p=(t-sh.start)/sh.dur, op=Math.sin(p*Math.PI);
+    const dx=Math.cos(sh.ang*Math.PI/180), dy=Math.sin(sh.ang*Math.PI/180);
+    const cx=sh.x-dx*420*p, cy=sh.y+dy*420*p;
+    kids.push(D({ position:'absolute', left:cx, top:cy, width:sh.len, height:2,
+      background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.95))',
+      transform:`rotate(${180+sh.ang}deg)`, transformOrigin:'left center',
+      opacity:op*0.9, filter:'blur(0.4px)', borderRadius:2, boxShadow:'0 0 8px rgba(200,225,255,0.9)' })); });
+  return D({ position:'absolute', inset:0, overflow:'hidden' }, kids);
+}
+
+// ── BEAT 1 — keystones converge, gate unlocks ───────────────────────────────
+function SceneGate(t){
+  const a=t, cx=640, cy=332;
+  const conv = eInOut(clamp(a/3.0,0,1));
+  const blaze = (a>2.6 && a<4.2) ? Math.sin(clamp((a-2.6)/1.6,0,1)*Math.PI) : 0;
+  const doors = eInOut(clamp((a-4.0)/2.2,0,1));
+  const pour = eOut(clamp((a-4.3)/2.4,0,1));
+  const chain = clamp((a-3.4)/1.1,0,1);
+  const cam = 1 + 0.1*eInOut(clamp(a/7,0,1));
+  const doorW=196, doorH=470, gap=14;
+  const kids = [];
+  kids.push(D({ position:'absolute', left:cx-260, top:60, width:520, height:600,
+    background:'radial-gradient(70% 60% at 50% 40%, rgba(120,150,255,0.18), transparent 70%)',
+    opacity:clamp((a-2.5)/2,0,1), filter:'blur(20px)', mixBlendMode:'screen' }));
+  kids.push(D({ position:'absolute', left:cx-150, top:70, width:300, height:doorH+60,
+    background:'linear-gradient(180deg, rgba(255,247,220,0.95), rgba(255,228,170,0.75) 55%, rgba(255,210,150,0.25))',
+    opacity:pour, filter:'blur(2px)',
+    clipPath:`polygon(${50-16}% 0%, ${50+16}% 0%, ${50+30}% 100%, ${50-30}% 100%)`, mixBlendMode:'screen' }));
+  if(pour>0.05) for(let i=0;i<7;i++) kids.push(D({ position:'absolute', left:cx, top:150, width:4, height:560,
+    background:'linear-gradient(180deg, rgba(255,244,210,0.5), transparent)',
+    transformOrigin:'top center', transform:`rotate(${(i-3)*7}deg)`,
+    opacity:pour*0.5, filter:'blur(3px)', mixBlendMode:'screen' }));
+  [-1,1].forEach(side=>{
+    const seams=[0.28,0.5,0.72].map(p=> D({ position:'absolute', left:16, right:16, top:doorH*p, height:2,
+      background:'rgba(0,0,0,0.35)', boxShadow:'0 1px 0 rgba(170,180,230,0.12)' }));
+    const rune = D({ position:'absolute', left:'50%', top:'40%', width:46, height:46, marginLeft:-23,
+      clipPath:'polygon(50% 0%, 100% 34%, 82% 100%, 18% 100%, 0% 34%)',
+      background:'#9fb6ff', opacity:0.3+blaze*0.7, boxShadow:`0 0 ${10+blaze*24}px ${blaze*10}px #8fb0ff` });
+    kids.push(D({ position:'absolute', top:90+doors*(doorH+40),
+      left:cx+side*(gap/2)-(side<0?doorW:0), width:doorW, height:doorH,
+      background:'linear-gradient(100deg, #2a2740 0%, #3a3658 48%, #232038 100%)',
+      borderRadius: side<0 ? '12px 4px 4px 12px' : '4px 12px 12px 4px',
+      boxShadow:'inset 0 0 40px rgba(0,0,0,0.6), 0 10px 40px rgba(0,0,0,0.5)',
+      border:'1px solid rgba(150,160,210,0.18)', opacity:1-doors*0.15 }, [seams, rune]));
+  });
+  if(chain>0) [-1,1].forEach(side=> kids.push(D({ position:'absolute', left:cx+side*150-4, top:90+chain*(H+80),
+    width:8, height:220, opacity:1-chain*0.9,
+    background:'repeating-linear-gradient(180deg, #8b8aa6 0 9px, #4a4860 9px 18px)',
+    borderRadius:4, transform:`rotate(${side*(chain*24)}deg)`, filter:'blur(0.3px)' })));
+  if(blaze>0) kids.push(D({ position:'absolute', left:cx-260, top:cy-260, width:520, height:520, borderRadius:'50%',
+    background:'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,238,190,0.6) 28%, transparent 60%)',
+    opacity:blaze, transform:`scale(${0.5+blaze*1.1})`, mixBlendMode:'screen', filter:'blur(2px)' }));
+  KEYSTONES.forEach((k,i)=>{
+    const ang=(i/6)*Math.PI*2 - Math.PI/2, R0=250, R1=30, r=lerp(R0,R1,conv);
+    const gx=cx+Math.cos(ang)*r, gy=cy+Math.sin(ang)*r*0.78;
+    const bob=Math.sin(t*1.3+i)*4*(1-conv);
+    const fadeOut = blaze>0.4 ? clamp(1-(blaze-0.4)*2.2,0,1) : 1;
+    kids.push(Gem({ x:gx, y:gy+bob, size:lerp(40,22,conv), color:k.color, core:k.core, intensity:fadeOut, glow:1+blaze*1.5, z:5 }));
+  });
+  return D({ position:'absolute', inset:0, transform:`scale(${cam})`, transformOrigin:'50% 42%' }, kids);
+}
+
+// ── BEAT 2 — sweep along the bridge to the floating castle ───────────────────
+function FloatingCastle(scale){
+  const kids = [];
+  kids.push(D({ position:'absolute', left:-150, top:96, width:300, height:90,
+    background:'radial-gradient(50% 60% at 50% 40%, rgba(120,160,255,0.5), transparent 70%)', filter:'blur(16px)', mixBlendMode:'screen' }));
+  kids.push(D({ position:'absolute', left:-110, top:92, width:220, height:70,
+    background:'linear-gradient(180deg, #2b2748, #14101f)',
+    clipPath:'polygon(8% 0%, 92% 0%, 70% 70%, 50% 100%, 30% 70%)', boxShadow:'inset 0 6px 12px rgba(120,150,255,0.25)' }));
+  [{x:-64,w:34,h:110},{x:30,w:34,h:116},{x:-16,w:44,h:150}].forEach(tw=>{
+    const win=[0.35,0.6,0.82].map(p=> D({ position:'absolute', left:tw.x+tw.w/2-3, top:100-tw.h+tw.h*p, width:6, height:9,
+      borderRadius:2, background:'#ffe6a8', boxShadow:'0 0 7px 1px #ffd27a' }));
+    kids.push(D(null, [
+      D({ position:'absolute', left:tw.x, top:100-tw.h, width:tw.w, height:tw.h,
+        background:'linear-gradient(100deg, #211d38, #34305a 60%, #1b1830)', borderRadius:'4px 4px 0 0', boxShadow:'inset 0 0 12px rgba(0,0,0,0.5)' }),
+      D({ position:'absolute', left:tw.x-4, top:100-tw.h-tw.w*0.7, width:tw.w+8, height:tw.w*0.8,
+        background:'linear-gradient(180deg, #4a4470, #2a2645)', clipPath:'polygon(50% 0%, 100% 100%, 0% 100%)' }),
+      win,
+    ]));
+  });
+  return D({ position:'absolute', left:'50%', top:0, transform:`translateX(-50%) scale(${scale})`, transformOrigin:'50% 60%' }, kids);
+}
+function SceneBridge(t){
+  const b=clamp(t-6.5,0,6);
+  const travel=eInOut(clamp(b/5.6,0,1));
+  const flow=(t*0.42)%1;
+  const cx=640, farY=300, nearY=720, farHalf=26, nearHalf=210;
+  const poly=`polygon(${cx-farHalf}px ${farY}px, ${cx+farHalf}px ${farY}px, ${cx+nearHalf}px ${nearY}px, ${cx-nearHalf}px ${nearY}px)`;
+  const camScale=lerp(1.0,1.18,travel), camY=lerp(0,26,travel);
+  const posts=[0.0,0.22,0.46,0.74].map((p,i)=>{
+    const y=lerp(farY,nearY,p), half=lerp(farHalf,nearHalf,p), sz=lerp(3,12,p);
+    return [-1,1].map(s=> D({ position:'absolute', left:cx+s*half-sz/2, top:y-sz, width:sz, height:sz, borderRadius:'50%',
+      background:'#dbe8ff', boxShadow:`0 0 ${sz*1.6}px ${sz*0.5}px rgba(160,195,255,0.9)` }));
+  });
+  const inner = D({ position:'absolute', inset:0, transform:`scale(${camScale}) translateY(${camY}px)`, transformOrigin:'50% 56%' }, [
+    D({ position:'absolute', left:0, right:0, top:lerp(150,96,travel) }, FloatingCastle(lerp(0.5,1.05,travel))),
+    D({ position:'absolute', inset:0, clipPath:poly,
+      background:'linear-gradient(180deg, rgba(150,185,255,0.0) 0%, rgba(150,185,255,0.55) 30%, rgba(120,165,255,0.8) 100%)',
+      filter:'blur(2px)', mixBlendMode:'screen', opacity:0.9 }),
+    D({ position:'absolute', inset:0, clipPath:poly }, [
+      D({ position:'absolute', inset:0, background:'linear-gradient(180deg, #1c2348 0%, #232c5a 55%, #2c3877 100%)' }),
+      D({ position:'absolute', left:0, right:0, top:farY, bottom:0,
+        background:'repeating-linear-gradient(180deg, transparent 0px, transparent 46px, rgba(180,210,255,0.5) 48px, transparent 54px)',
+        backgroundPositionY:`${flow*100}px`, opacity:0.75, mixBlendMode:'screen' }),
+      D({ position:'absolute', left:cx-1, top:farY, width:2, bottom:0,
+        background:'linear-gradient(180deg, rgba(200,225,255,0.2), rgba(210,230,255,0.9))', mixBlendMode:'screen' }),
+    ]),
+    posts,
+  ]);
+  return D({ position:'absolute', inset:0, overflow:'hidden' }, inner);
+}
+
+// ── BEAT 3 & 4 — the sanctum, the Dissonance, the hero ───────────────────────
+function Waterfall(x,t){
+  const flow=(t*0.9)%1;
+  const mist=[]; for(let i=0;i<4;i++){ const m=((t*0.4+i*0.25)%1);
+    mist.push(D({ position:'absolute', left:18+i*12, top:270-m*70, width:8, height:8, borderRadius:'50%',
+      background:'rgba(220,250,255,0.5)', opacity:(1-m)*0.6, filter:'blur(3px)' })); }
+  return D({ position:'absolute', left:x-38, top:150, width:76, height:300 }, [
+    D({ position:'absolute', left:8, top:0, width:60, height:280, borderRadius:30, overflow:'hidden',
+      background:'linear-gradient(180deg, rgba(200,245,255,0.75), rgba(120,220,235,0.35) 70%, transparent)',
+      boxShadow:'0 0 24px 6px rgba(120,220,255,0.4)', filter:'blur(0.6px)' },
+      D({ position:'absolute', inset:0,
+        background:'repeating-linear-gradient(180deg, rgba(255,255,255,0.55) 0 8px, transparent 8px 22px)',
+        backgroundPositionY:`${flow*60}px` })),
+    D({ position:'absolute', left:-10, top:268, width:96, height:34, borderRadius:'50%',
+      background:'radial-gradient(50% 60% at 50% 40%, rgba(190,250,255,0.95), rgba(90,200,230,0.4) 60%, transparent 75%)',
+      filter:'blur(2px)', boxShadow:'0 0 30px 10px rgba(120,220,255,0.45)', mixBlendMode:'screen' }),
+    mist,
+  ]);
+}
+function Dissonance(t,s){
+  const appear=eOut(clamp((s-2.4)/1.8,0,1));
+  const breathe=1+Math.sin(t*0.9)*0.04;
+  const eyesOpen=clamp((s-4.4)/1.2,0,1);
+  const blink=(Math.sin(t*0.7)>0.97)?0.15:1;
+  const cx=640, cy=330, coreR=84;
+  const rings=[{tilt:70,sp:0.5,r:150,c:'#b08cff'},{tilt:64,sp:-0.34,r:178,c:'#8f6bff'}].map(rg=>
+    D({ position:'absolute', left:-rg.r, top:-rg.r, width:rg.r*2, height:rg.r*2, borderRadius:'50%',
+      border:`3px solid ${rg.c}`, transform:`rotateX(${rg.tilt}deg) rotateZ(${t*rg.sp*40}deg)`,
+      boxShadow:`0 0 22px 2px ${rg.c}, inset 0 0 18px ${rg.c}`, opacity:0.6, mixBlendMode:'screen' }));
+  const eyes=[-26,26].map(dx=> D({ position:'absolute', left:coreR+dx-13, top:coreR-6, width:26, height:12*eyesOpen*blink,
+    borderRadius:'50%', background:'radial-gradient(50% 60% at 50% 50%, #d8f2ff, #6fa8ff 70%)',
+    opacity:eyesOpen, boxShadow:'0 0 12px 2px rgba(150,200,255,0.9)' }));
+  const core = D({ position:'absolute', left:-coreR, top:-coreR, width:coreR*2, height:coreR*2,
+    transform:`scale(${breathe}) rotate(${Math.sin(t*0.3)*6}deg)` }, [
+    D({ position:'absolute', inset:0, clipPath:'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)',
+      background:'linear-gradient(150deg, #2a1d52 0%, #160e30 50%, #0c0820 100%)', boxShadow:'inset 0 0 40px rgba(150,110,255,0.5)' }),
+    D({ position:'absolute', inset:0, clipPath:'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)',
+      background:'linear-gradient(60deg, transparent 48%, rgba(180,150,255,0.4) 50%, transparent 52%), linear-gradient(-60deg, transparent 48%, rgba(180,150,255,0.3) 50%, transparent 52%)', opacity:0.8 }),
+    eyes,
+  ]);
+  const shards = D({ position:'absolute', left:0, top:0, transform:`rotate(${t*22}deg)` },
+    KEYSTONES.map((k,i)=>{ const ang=(i/6)*Math.PI*2, r=132;
+      return Gem({ x:Math.cos(ang)*r, y:Math.sin(ang)*r*0.5, size:20, color:k.color, core:k.core, glow:1, z:3 }); }));
+  return D({ position:'absolute', left:cx, top:cy, opacity:appear, transform:`translate(-50%,-50%) scale(${appear})` }, [
+    rings,
+    D({ position:'absolute', left:-coreR*1.8, top:-coreR*1.8, width:coreR*3.6, height:coreR*3.6, borderRadius:'50%',
+      background:'radial-gradient(circle, rgba(150,110,255,0.5), transparent 60%)', filter:'blur(18px)', mixBlendMode:'screen' }),
+    core, shards,
+  ]);
+}
+function Hero(t,appear){
+  const bob=Math.sin(t*1.1)*2;
+  const gems = KEYSTONES.map((k,i)=>{ const ang=Math.PI+(i/5)*Math.PI, r=64;
+    return Gem({ x:Math.cos(ang)*r, y:Math.sin(ang)*r*0.55-26, size:15, color:k.color, core:k.core, glow:0.9+Math.sin(t*2+i)*0.2, z:9 }); });
+  return D({ position:'absolute', left:640, top:560+(1-appear)*40+bob, transform:'translate(-50%,0)', opacity:appear }, [
+    gems,
+    D({ position:'absolute', left:-70, top:78, width:140, height:34, borderRadius:'50%',
+      background:'radial-gradient(50% 60% at 50% 40%, rgba(150,180,255,0.55), transparent 70%)', filter:'blur(6px)', mixBlendMode:'screen' }),
+    D({ position:'absolute', left:-17, top:22, width:34, height:66, background:'linear-gradient(100deg, #14172e, #2a2f54)',
+      clipPath:'polygon(34% 0%, 66% 0%, 100% 100%, 0% 100%)', boxShadow:'-2px 0 0 rgba(150,180,255,0.4)' }),
+    D({ position:'absolute', left:-9, top:6, width:18, height:18, borderRadius:'50%', background:'#1a1d36', boxShadow:'-1px -1px 0 rgba(160,190,255,0.5)' }),
+  ]);
+}
+function SceneSanctum(t){
+  const s=clamp(t-12,0,10);
+  const reveal=eInOut(clamp(s/2.6,0,1));
+  const camScale=lerp(1.16,1.0,reveal)+eInOut(clamp((s-4)/6,0,1))*0.07;
+  const camY=lerp(46,0,reveal);
+  const heroAppear=eOut(clamp((s-5.0)/1.8,0,1));
+  const beacons = KEYSTONES.map((k,i)=>{
+    const xs=[330,470,590,700,820,960], x=xs[i], ph=480;
+    return D({ position:'absolute', left:x-13, top:220 }, [
+      D({ position:'absolute', left:4, top:-200, width:18, height:240, background:`linear-gradient(180deg, transparent, ${k.color})`, opacity:0.4, filter:'blur(6px)', mixBlendMode:'screen' }),
+      D({ position:'absolute', left:-3, top:-12, width:32, height:32, borderRadius:'50%',
+        background:`radial-gradient(circle at 40% 35%, ${k.core}, ${k.color} 60%, transparent 75%)`, boxShadow:`0 0 20px 6px ${k.color}`, mixBlendMode:'screen' }),
+      D({ position:'absolute', left:0, top:16, width:26, height:ph-240, background:'linear-gradient(100deg, #1a1830, #2c294a 55%, #15131f)', borderRadius:4, boxShadow:'inset 0 0 10px rgba(0,0,0,0.5)' }),
+    ]);
+  });
+  const inner = D({ position:'absolute', inset:0, transform:`scale(${camScale}) translateY(${camY}px)`, transformOrigin:'50% 50%' }, [
+    D({ position:'absolute', left:320, top:60, width:640, height:640,
+      background:'radial-gradient(45% 45% at 50% 50%, rgba(120,150,255,0.22), transparent 70%)', filter:'blur(20px)', mixBlendMode:'screen' }),
+    Waterfall(186,t), Waterfall(1094,t),
+    beacons,
+    D({ position:'absolute', left:470, top:600, width:340, height:80,
+      background:'radial-gradient(50% 60% at 50% 30%, #2a2c50, #14121f 80%)', borderRadius:'50%',
+      boxShadow:'0 0 40px rgba(120,150,255,0.3), inset 0 6px 18px rgba(150,180,255,0.25)' }),
+    Dissonance(t,s),
+    Hero(t,heroAppear),
+  ]);
+  return D({ position:'absolute', inset:0, overflow:'hidden' }, inner);
+}
+
+// ── captions + title ────────────────────────────────────────────────────────
+function Caption(t,inS,outE,line1,line2){
+  const op=fade(t,inS,inS+0.7,outE-0.7,outE);
+  if(op<=0.001) return null;
+  const kids=[ D({ fontFamily:"'Cormorant Garamond', Georgia, serif", fontStyle:'italic', fontSize:32, fontWeight:500,
+    color:'#eef1ff', letterSpacing:'0.01em', textShadow:'0 2px 18px rgba(60,80,160,0.8)' }, line1) ];
+  if(line2) kids.push(D({ fontFamily:"'Cormorant Garamond', Georgia, serif", fontStyle:'italic', fontSize:22, color:'rgba(200,210,255,0.78)', marginTop:2 }, line2));
+  return D({ position:'absolute', left:0, right:0, bottom:56, textAlign:'center', opacity:op }, kids);
+}
+function TitleCard(t){
+  const op=fade(t,18.8,20.4,99,100);
+  if(op<=0.001) return null;
+  const grow=eOut(clamp((t-18.8)/2.2,0,1));
+  return D({ position:'absolute', left:0, right:0, top:150, textAlign:'center', opacity:op }, [
+    D({ fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:20, letterSpacing:'0.5em', color:'rgba(190,205,255,0.8)', textTransform:'uppercase', marginBottom:14, paddingLeft:'0.5em' }, 'Earth Quest'),
+    D({ fontFamily:"'Cinzel', Georgia, serif", fontWeight:700, fontSize:76, letterSpacing:'0.08em', color:'#fff',
+      textShadow:'0 0 28px rgba(150,180,255,0.85), 0 0 60px rgba(120,150,255,0.5)', lineHeight:1 }, 'THE WORLDSPRING'),
+    D({ width:lerp(0,360,grow), height:2, margin:'22px auto 0', background:'linear-gradient(90deg, transparent, rgba(200,215,255,0.9), transparent)' }),
+  ]);
+}
+
+// ── root scene ──────────────────────────────────────────────────────────────
+function buildScene(t){
+  const fa=fade(t,0,0.8,6.4,7.2);
+  const fb=fade(t,6.4,7.4,11.7,12.5);
+  const fs=fade(t,11.8,12.7,99,100);
+  const kids=[ BaseSky(t) ];
+  if(fa>0.001) kids.push(D({ position:'absolute', inset:0, opacity:fa }, SceneGate(t)));
+  if(fb>0.001) kids.push(D({ position:'absolute', inset:0, opacity:fb }, SceneBridge(t)));
+  if(fs>0.001) kids.push(D({ position:'absolute', inset:0, opacity:fs }, SceneSanctum(t)));
+  kids.push(D({ position:'absolute', inset:0, pointerEvents:'none', background:'radial-gradient(120% 100% at 50% 45%, transparent 52%, rgba(4,3,12,0.55) 100%)' }));
+  kids.push(D({ position:'absolute', inset:0, pointerEvents:'none', boxShadow:'inset 0 0 160px rgba(8,6,24,0.7)' }));
+  kids.push(Caption(t,0.8,3.0,'Six Keystones — one from every realm.'));
+  kids.push(Caption(t,3.6,6.2,'The great Keystone Gate opens.'));
+  kids.push(Caption(t,7.4,11.4,'Across the bridge of stars…'));
+  kids.push(Caption(t,12.8,16.2,'…to the Worldspring, where all realms meet.'));
+  kids.push(Caption(t,16.4,18.4,'And there, the Dissonance stirs.'));
+  kids.push(TitleCard(t));
+  return D({ position:'absolute', inset:0, overflow:'hidden', background:'#04030f' }, kids);
+}
+
+// ── clock + fit-to-viewport ─────────────────────────────────────────────────
+const scene = document.getElementById('scene');
+const stage = document.getElementById('stage');
+function fit(){ const sc=Math.min(window.innerWidth/W, window.innerHeight/H); stage.style.transform='scale('+sc+')'; }
+window.addEventListener('resize', fit); fit();
+
+// ── score: starts in sync with the visuals; honors the game's mute (shared same-origin localStorage) ──
+const bgm=document.getElementById('bgm');
+function startMusic(){ try{ if(localStorage.getItem('eq_muted')==='1') return; }catch(e){} if(bgm){ bgm.volume=0.72; bgm.play().catch(()=>{}); } }
+let start=null;
+function frame(now){
+  if(start==null){ start=now; startMusic(); }   // kick the music the instant the first frame draws so the crescendo lands on the title
+  const t=Math.min((now-start)/1000, DUR);
+  const node=buildScene(t);
+  scene.replaceChildren(node);
+  if(t<DUR) requestAnimationFrame(frame);
+  else requestAnimationFrame(()=>scene.replaceChildren(buildScene(DUR)));  // hold final title frame
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+node_modules
+.env*
+.vercel
+*secret*
+*keys*
+Stripe*.txt
+
+# Bucket-destined files must NEVER be committed to the public repo —
+# they live in the private "earthquest" Storage bucket only.
+bucket/
+game.html
+leaderboard.html
+guide.pdf

@@ -1,0 +1,11 @@
+{
+  "name": "earth-quest",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Earth Quest — one-time purchase + 150 reusable student codes (mirrors Science Quest).",
+  "dependencies": {
+    "stripe": "^17.5.0",
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
